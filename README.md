@@ -34,6 +34,13 @@ Backend health: http://localhost:4000/health
 docker compose up -d --build
 ```
 
+Shortcut script (runs backend + frontend together):
+
+```bash
+chmod +x scripts/deploy-vps.sh
+./scripts/deploy-vps.sh
+```
+
 3. Check status and logs:
 
 ```bash
