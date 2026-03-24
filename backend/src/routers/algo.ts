@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../core/db';
 import { getStrategySubmission, setStrategySubmission, validateStrategyCode } from '../services/strategyRuntime';
 
+type ValidationError = { ok: false; message: string; line?: number; column?: number; fields?: Array<{ field: string; message: string }> };
+
 const router = Router();
 
 router.post('/validate', async (req, res) => {
@@ -10,7 +12,8 @@ router.post('/validate', async (req, res) => {
 
   const validation = await validateStrategyCode(code);
   if (!validation.ok) {
-    return res.status(400).json({ ok: false, error: validation.message, line: validation.line, column: validation.column, fields: validation.fields || [] });
+    const err = validation as ValidationError;
+    return res.status(400).json({ ok: false, error: err.message, line: err.line, column: err.column, fields: err.fields || [] });
   }
 
   return res.json({ ok: true, parameters: validation.parameters });
@@ -23,7 +26,8 @@ router.post('/submit', async (req, res) => {
 
   const validation = await validateStrategyCode(code);
   if (!validation.ok) {
-    return res.status(400).json({ error: 'INVALID_CODE', detail: validation.message, line: validation.line, column: validation.column, fields: validation.fields || [] });
+    const err = validation as ValidationError;
+    return res.status(400).json({ error: 'INVALID_CODE', detail: err.message, line: err.line, column: err.column, fields: err.fields || [] });
   }
 
   const round = await db.round.findUnique({ where: { id: roundId } });
