@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id          String             @id @default(uuid())
+  firebaseUid String?            @unique
+  email       String             @unique
+  name        String?
+  teamId      String?
+  role        String             @default("participant")
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  portfolios  Portfolio[]
+  leaderboard LeaderboardEntry[]
+}
+
+model Allowlist {
+  id     Int     @id @default(autoincrement())
+  email  String  @unique
+  name   String?
+  teamId String?
+}
+
+model Round {
+  id                 Int          @id
+  name               String
+  isActive           Boolean      @default(false)
+  splitIndex         Int          @default(250)
+  replaySpeed        Float        @default(1.0)
+  currentCandleIndex Int          @default(0)
+  originalCandleCount Int         @default(0)
+  gbmDrift           Float        @default(0.0001)
+  gbmVolatility      Float        @default(0.002)
+  startedAt          DateTime?
+  lockedParams       Json?
+  marketData         MarketData[]
+  portfolios         Portfolio[]
+}
+
+model MarketData {
+  id          Int      @id @default(autoincrement())
+  roundId     Int
+  candleIndex Int
+  timestamp   DateTime
+  open        Decimal
+  high        Decimal
+  low         Decimal
+  close       Decimal
+  volume      BigInt
+  round       Round    @relation(fields: [roundId], references: [id])
+
+  @@unique([roundId, candleIndex])
+}
+
+model Portfolio {
+  id              String    @id @default(uuid())
+  userId          String
+  roundId         Int
+  runId           Int       @default(1)
+  capital         Decimal   @default(1000000)
+  bookedPnl       Decimal   @default(0)
+  isActive        Boolean   @default(false)
+  isSessionLocked Boolean   @default(false)
+  deployedAt      DateTime?
+  stoppedAt       DateTime?
+  user            User      @relation(fields: [userId], references: [id])
+  round           Round     @relation(fields: [roundId], references: [id])
+  trades          Trade[]
+}
+
+model Trade {
+  id          String    @id @default(uuid())
+  portfolioId String
+  direction   String
+  entryPrice  Decimal
+  exitPrice   Decimal?
+  sizeUsd     Decimal
+  entryCandle Int
+  exitCandle  Int?
+  pnl         Decimal?
+  status      String    @default("OPEN")
+  closeReason String?
+  openedAt    DateTime  @default(now())
+  closedAt    DateTime?
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+}
+
+model LeaderboardEntry {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  roundId    Int
+  bookedPnl  Decimal
+  recordedAt DateTime @default(now())
+  runCount   Int      @default(1)
+  isFinal    Boolean  @default(false)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, roundId, isFinal])
+}

@@ -1,0 +1,7 @@
+node_modules/
+**/node_modules/
+.env
+*.log
+backend/dist/
+frontend/dist/
+backend/.prisma/

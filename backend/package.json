@@ -1,0 +1,39 @@
+{
+  "name": "kronosphere-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma db push",
+    "seed": "tsx scripts/seedData.ts",
+    "fetch:data": "tsx scripts/fetchData.ts"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.35.6",
+    "@prisma/client": "^6.6.0",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.2.0",
+    "isolated-vm": "^5.0.3",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.1",
+    "yahoo-finance2": "^2.13.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.10",
+    "@types/ws": "^8.5.14",
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

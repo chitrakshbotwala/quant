@@ -1,0 +1,49 @@
+services:
+  express-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      RUN_SEED_ON_STARTUP: "false"
+    ports:
+      - "4000:4000"
+    volumes:
+      - backend_data:/app/prisma
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - kronosphere_net
+
+  react-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      express-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - kronosphere_net
+
+volumes:
+  backend_data:
+
+networks:
+  kronosphere_net:
