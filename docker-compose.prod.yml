@@ -1,0 +1,95 @@
+services:
+  traefik:
+    image: traefik:v3.4
+    container_name: kronosphere-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - letsencrypt_data:/letsencrypt
+    networks:
+      - kronosphere_net
+
+  express-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kronosphere-backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      RUN_SEED_ON_STARTUP: "false"
+    volumes:
+      - backend_data:/app/prisma
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      - "traefik.enable=true"
+      # Router: API + health routes
+      - "traefik.http.routers.backend-api.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/health`))"
+      - "traefik.http.routers.backend-api.entrypoints=websecure"
+      - "traefik.http.routers.backend-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend-api.priority=20"
+      # Router: WebSocket
+      - "traefik.http.routers.backend-ws.rule=Host(`${DOMAIN}`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.backend-ws.entrypoints=websecure"
+      - "traefik.http.routers.backend-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backend-ws.priority=20"
+      # Service port
+      - "traefik.http.services.backend.loadbalancer.server.port=4000"
+    networks:
+      - kronosphere_net
+
+  react-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
+        - VITE_API_URL=${VITE_API_URL}
+    container_name: kronosphere-frontend
+    depends_on:
+      express-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    labels:
+      - "traefik.enable=true"
+      # Router: catch-all for the domain (lower priority than backend routes)
+      - "traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend.priority=10"
+      # Service port
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    networks:
+      - kronosphere_net
+
+volumes:
+  backend_data:
+  letsencrypt_data:
+
+networks:
+  kronosphere_net:

@@ -6,7 +6,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${ROOT_DIR}"
 
-echo "[deploy] Starting Kronosphere Docker deployment..."
+COMPOSE_FILE="docker-compose.prod.yml"
+
+echo "[deploy] Starting Kronosphere production deployment..."
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "[deploy] ERROR: docker is not installed." >&2
@@ -29,15 +31,16 @@ if [ ! -f ".env" ]; then
 fi
 
 echo "[deploy] Validating compose file..."
-docker compose config >/dev/null
+docker compose -f "$COMPOSE_FILE" config >/dev/null
 
-echo "[deploy] Building and starting frontend + backend..."
-docker compose up -d --build --remove-orphans
+echo "[deploy] Building and starting traefik + frontend + backend..."
+docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
 echo "[deploy] Service status:"
-docker compose ps
+docker compose -f "$COMPOSE_FILE" ps
 
+echo ""
 echo "[deploy] Deployment complete."
-echo "[deploy] Frontend: http://<your-vps-ip>:8080"
-echo "[deploy] Backend health: http://<your-vps-ip>:4000/health"
-echo "[deploy] Tail logs: docker compose logs -f"
+echo "[deploy] Site:    https://$(grep -oP '(?<=DOMAIN=).+' .env || echo 'qa.mlsakiit.com')"
+echo "[deploy] Health:  https://$(grep -oP '(?<=DOMAIN=).+' .env || echo 'qa.mlsakiit.com')/health"
+echo "[deploy] Logs:    docker compose -f $COMPOSE_FILE logs -f"
